@@ -7,10 +7,11 @@ import { DOWNSTREAM_CONSUMERS, EMPLOYEE_SERVICE_CONTRACT } from '../contracts/re
  * Traces causal links from API fields to downstream consuming microservices
  */
 export class DependencyGraphEngine {
-  private graph: Graph;
+  private graph: any;
 
   constructor() {
-    this.graph = new Graph({ multi: false, type: 'directed' });
+    const GraphConstructor = (Graph as any).default || Graph;
+    this.graph = new GraphConstructor({ multi: false, type: 'directed' });
     this.initBaseGraph();
   }
 
@@ -81,7 +82,7 @@ export class DependencyGraphEngine {
 
     const affected: string[] = [];
     // Consumers are in-neighbors of fieldNodeId
-    this.graph.inNeighbors(fieldNodeId).forEach((neighbor) => {
+    this.graph.inNeighbors(fieldNodeId).forEach((neighbor: string) => {
       const type = this.graph.getNodeAttribute(neighbor, 'type');
       if (type === 'CONSUMER') {
         affected.push(neighbor);
@@ -98,7 +99,7 @@ export class DependencyGraphEngine {
     const nodes: GraphNode[] = [];
     const edges: GraphEdge[] = [];
 
-    this.graph.forEachNode((nodeId, attributes) => {
+    this.graph.forEachNode((nodeId: string, attributes: any) => {
       nodes.push({
         id: nodeId,
         label: attributes.label || nodeId,
@@ -107,7 +108,7 @@ export class DependencyGraphEngine {
       });
     });
 
-    this.graph.forEachEdge((edgeId, attributes, source, target) => {
+    this.graph.forEachEdge((edgeId: string, attributes: any, source: string, target: string) => {
       edges.push({
         id: edgeId,
         source,

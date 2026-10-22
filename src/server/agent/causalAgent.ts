@@ -173,7 +173,9 @@ export class CausalGuardAgent {
       step: 'TEST_HYPOTHESES',
       stepNumber: 4,
       title: 'Test Hypotheses: Execute Deterministic Contract Tests',
-      detail: `Validated failure hypotheses against simulated consumer contracts. ${failedInitial.length} of ${initialTestResults.length} downstream contract tests FAILED with fatal status 500. Proved that unpatched mutation of '${change.originalField}' breaks [${affectedServices.join(', ')}]!`,
+      detail: failedInitial.length > 0
+        ? `Validated failure hypotheses against simulated consumer contracts. ${failedInitial.length} of ${initialTestResults.length} downstream contract tests FAILED with fatal status 500. Proved that unpatched mutation of '${change.originalField}' breaks [${affectedServices.join(', ')}]!`
+        : `All ${initialTestResults.length} downstream contract tests PASSED with HTTP 200 OK! Zero breaking contract mutations detected. The proposed PR cleanly preserves '${change.originalField}' and downstream consumers are 100% resilient.`,
       status: failedInitial.length > 0 ? 'WARNING' : 'COMPLETED',
       data: {
         totalTested: initialTestResults.length,
@@ -199,8 +201,10 @@ export class CausalGuardAgent {
     const selectTrace: AgentStepTrace = {
       step: 'SELECT_INTERVENTION',
       stepNumber: 5,
-      title: `Select Intervention: ${chosenIntervention.title}`,
-      detail: `Evaluated ${availableInterventions.length} candidate remediation strategies. Selected pattern (${chosenIntervention.title}) because it preserves '${change.originalField}' for downstream consumers [${affectedServices.join(', ')}]. Zero client downtime, zero breaking changes.`,
+      title: failedInitial.length > 0 ? `Select Intervention: ${chosenIntervention.title}` : 'Select Intervention: No Intervention Required (Contracts Safe)',
+      detail: failedInitial.length > 0
+        ? `Evaluated ${availableInterventions.length} candidate remediation strategies. Selected pattern (${chosenIntervention.title}) because it preserves '${change.originalField}' for downstream consumers [${affectedServices.join(', ')}]. Zero client downtime, zero breaking changes.`
+        : `All downstream consumer contracts are already passing with 100% compliance. Zero breaking changes detected in this Pull Request; code is immediately ready to merge.`,
       status: 'COMPLETED',
       data: {
         availableInterventions,

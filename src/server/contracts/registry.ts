@@ -164,9 +164,9 @@ export function buildUnpatchedPayload(change: ProposedChange): Record<string, an
   const payload = { ...BASELINE_PAYLOAD };
 
   if (change.changeType === 'FIELD_RENAME') {
-    const val = payload[change.originalField] || 'EMP-90210';
-    delete payload[change.originalField];
-    if (change.newField) {
+    if (change.newField && change.newField !== change.originalField) {
+      const val = payload[change.originalField] || 'EMP-90210';
+      delete payload[change.originalField];
       payload[change.newField] = val;
     }
   } else if (change.changeType === 'FIELD_REMOVAL') {

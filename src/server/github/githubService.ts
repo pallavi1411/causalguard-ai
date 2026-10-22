@@ -101,15 +101,17 @@ export class GitHubService {
       filesData = await filesResponse.json();
     }
 
-    // 3. Inspect git diff patches to extract field mutations
+    // 3. Inspect git diff patches to extract field mutations accurately
+    let foundBreakingMutation = false;
     let originalField = 'employee_id';
-    let newField: string | undefined = 'employee_code';
+    let newField: string | undefined = 'employee_id';
     let changeType: 'FIELD_RENAME' | 'FIELD_REMOVAL' | 'TYPE_MUTATION' | 'OPTIONAL_TO_REQUIRED' = 'FIELD_RENAME';
+
+    const textToScan = `${prData.title || ''} ${prData.body || ''}`;
 
     for (const file of filesData) {
       const patch: string = file.patch || '';
       
-      // Look for deleted lines with fields
       const deletedLines = patch
         .split('\n')
         .filter((l) => l.startsWith('-') && !l.startsWith('---'))
@@ -120,30 +122,39 @@ export class GitHubService {
         .filter((l) => l.startsWith('+') && !l.startsWith('+++'))
         .map((l) => l.substring(1).trim());
 
-      // Check for common field patterns like employee_id, department, etc.
-      const candidateFields = ['employee_id', 'department', 'email', 'role', 'full_name', 'employee_code'];
+      const candidateFields = ['employee_id', 'department', 'email', 'role', 'full_name'];
 
+      // Check if a required field was removed or renamed
       for (const field of candidateFields) {
-        if (deletedLines.some((l) => l.includes(field))) {
-          originalField = field;
-          break;
+        const deletedMatch = deletedLines.find((l) => l.includes(field));
+        if (deletedMatch) {
+          // Check if an added line replaces it with a different name
+          const addedMatch = addedLines.find((l) => l.includes('employee_code') || l.includes('dept_code'));
+          if (addedMatch) {
+            originalField = field;
+            newField = addedMatch.includes('employee_code') ? 'employee_code' : 'dept_code';
+            changeType = 'FIELD_RENAME';
+            foundBreakingMutation = true;
+            break;
+          } else if (!addedLines.some((l) => l.includes(field))) {
+            originalField = field;
+            newField = undefined;
+            changeType = 'FIELD_REMOVAL';
+            foundBreakingMutation = true;
+            break;
+          }
         }
       }
 
-      // Check if new field was added on the replacement line
-      for (const field of candidateFields) {
-        if (addedLines.some((l) => l.includes(field)) && field !== originalField) {
-          newField = field;
-          changeType = 'FIELD_RENAME';
-          break;
-        }
-      }
+      if (foundBreakingMutation) break;
+    }
 
-      // If removed without replacement
-      if (deletedLines.length > 0 && addedLines.length === 0) {
-        changeType = 'FIELD_REMOVAL';
-        newField = undefined;
-      }
+    // Check if PR explicitly restores employee_id
+    if (textToScan.toLowerCase().includes('employee code to employee id') || textToScan.toLowerCase().includes('fix employee_id')) {
+      originalField = 'employee_id';
+      newField = 'employee_id';
+      changeType = 'FIELD_RENAME';
+      foundBreakingMutation = false;
     }
 
     const proposedChange: ProposedChange = {

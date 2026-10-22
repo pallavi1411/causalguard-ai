@@ -9,6 +9,7 @@ import { ALL_SCENARIOS } from './scenarios/seededScenarios.js';
 import { SEEDED_PROPOSED_CHANGE } from './contracts/registry.js';
 import { AnalyzeRequestSchema } from './schemas/agentSchemas.js';
 import { GitHubService } from './github/githubService.js';
+import { ProposedChange } from './types/index.js';
 
 dotenv.config();
 
