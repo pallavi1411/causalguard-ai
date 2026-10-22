@@ -36,14 +36,23 @@ export default function App() {
     }
   };
 
-  const runAgentAnalysis = async (customChange?: ProposedChange) => {
+  const runAgentAnalysis = async (
+    customChange?: ProposedChange,
+    githubPrUrl?: string,
+    githubToken?: string
+  ) => {
     setIsRunning(true);
     setError(null);
     try {
-      const targetChange = customChange || selectedChange;
-      const payload = targetChange
-        ? { customChange: targetChange }
-        : { scenarioId: 'employee-id-rename' };
+      let payload: any;
+      if (githubPrUrl) {
+        payload = { githubPrUrl, githubToken };
+      } else {
+        const targetChange = customChange || selectedChange;
+        payload = targetChange
+          ? { customChange: targetChange }
+          : { scenarioId: 'employee-id-rename' };
+      }
 
       const response = await fetch('/analyze', {
         method: 'POST',
@@ -52,7 +61,8 @@ export default function App() {
       });
 
       if (!response.ok) {
-        throw new Error(`Server returned error ${response.status}: ${response.statusText}`);
+        const errJson = await response.json().catch(() => null);
+        throw new Error(errJson?.message || `Server returned error ${response.status}: ${response.statusText}`);
       }
 
       const data: AnalysisResponse = await response.json();
@@ -81,16 +91,16 @@ export default function App() {
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
         {error && (
-          <div className="p-4 rounded-xl bg-red-950/60 border border-red-800 text-red-200 text-sm flex items-center justify-between gap-3">
+          <div className="p-4 rounded-xl bg-red-950/60 border border-red-800 text-red-200 text-sm flex items-center justify-between gap-3 shadow-lg">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
               <span>{error}</span>
             </div>
             <button
-              onClick={() => runAgentAnalysis(selectedChange)}
+              onClick={() => setError(null)}
               className="px-3 py-1 bg-red-900/60 hover:bg-red-800 rounded font-medium text-xs text-white"
             >
-              Retry
+              Dismiss
             </button>
           </div>
         )}
@@ -103,14 +113,14 @@ export default function App() {
               STEP 1: PROVIDE INPUT TO AGENT
             </span>
             <span className="text-xs text-slate-400">
-              Customize or select a preset, then launch the agent
+              Customize or select a preset, or connect to a real GitHub Pull Request
             </span>
           </div>
 
           <SimulationInputPanel
-            onAnalyze={(change) => {
-              setSelectedChange(change);
-              runAgentAnalysis(change);
+            onAnalyze={(change, ghUrl, ghToken) => {
+              if (change) setSelectedChange(change);
+              runAgentAnalysis(change, ghUrl, ghToken);
             }}
             onChangeSelected={(change) => setSelectedChange(change)}
             isRunning={isRunning}

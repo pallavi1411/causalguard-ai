@@ -8,6 +8,7 @@ import { CausalGuardAgent } from './agent/causalAgent.js';
 import { ALL_SCENARIOS } from './scenarios/seededScenarios.js';
 import { SEEDED_PROPOSED_CHANGE } from './contracts/registry.js';
 import { AnalyzeRequestSchema } from './schemas/agentSchemas.js';
+import { GitHubService } from './github/githubService.js';
 
 dotenv.config();
 
@@ -97,8 +98,20 @@ const handleAnalyze = async (req: Request, res: Response) => {
     const validated = AnalyzeRequestSchema.safeParse(req.body);
     const scenarioId = validated.success ? validated.data.scenarioId : 'employee-id-rename';
     const customChange = validated.success ? validated.data.customChange : undefined;
+    const githubPrUrl = validated.success ? validated.data.githubPrUrl : undefined;
+    const githubToken = validated.success ? validated.data.githubToken : undefined;
 
-    const changeToAnalyze = customChange || ALL_SCENARIOS[scenarioId || 'employee-id-rename'] || SEEDED_PROPOSED_CHANGE;
+    let changeToAnalyze: ProposedChange;
+
+    if (githubPrUrl && githubPrUrl.trim() !== '') {
+      // Connect to real GitHub and verify PR exists
+      changeToAnalyze = await GitHubService.fetchRealPR({
+        prUrl: githubPrUrl.trim(),
+        token: githubToken,
+      });
+    } else {
+      changeToAnalyze = customChange || ALL_SCENARIOS[scenarioId || 'employee-id-rename'] || SEEDED_PROPOSED_CHANGE;
+    }
 
     const agent = new CausalGuardAgent();
     const result = await agent.runAnalysis(changeToAnalyze);
@@ -109,8 +122,8 @@ const handleAnalyze = async (req: Request, res: Response) => {
     res.json(result);
   } catch (error: any) {
     console.error('[CausalGuard API Error]', error);
-    res.status(500).json({
-      error: 'Agent analysis encountered an unhandled exception',
+    res.status(400).json({
+      error: 'Agent analysis encountered an error',
       message: error?.message || String(error),
     });
   }

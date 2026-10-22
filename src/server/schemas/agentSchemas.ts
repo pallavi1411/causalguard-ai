@@ -71,4 +71,6 @@ export const SelectInterventionSchema = z.object({
 export const AnalyzeRequestSchema = z.object({
   scenarioId: z.string().optional().default('employee-id-rename'),
   customChange: ProposedChangeSchema.optional(),
+  githubPrUrl: z.string().optional(),
+  githubToken: z.string().optional(),
 });

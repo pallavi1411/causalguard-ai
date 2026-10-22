@@ -12,7 +12,7 @@ export const EMPLOYEE_SERVICE_CONTRACT: ServiceContract = {
   version: 'v1.4.0',
   fields: {
     employee_id: {
-      name: 'employee_code',
+      name: 'employee_id',
       type: 'string',
       required: true,
       description: 'Unique corporate employee identifier (UUID or EMP-XXXX)',
